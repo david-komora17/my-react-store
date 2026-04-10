@@ -1,24 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, MapPin, Wind, Droplets, Sun, CloudRain } from 'lucide-react';
 
 const WeatherDashboard = () => {
-  const [city, setCity] = useState('');
+  const [query, setQuery] = useState('');
   const [isMetric, setIsMetric] = useState(true);
+  const [weatherData, setWeatherData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - Replace with your API fetch logic
-  const weather = {
-    temp: 24,
-    condition: 'Partly Cloudy',
-    humidity: 62,
-    wind: 12,
-    forecast: [
-      { day: 'Tue', high: 26, low: 18, type: 'sunny' },
-      { day: 'Wed', high: 22, low: 16, type: 'cloudy' },
-      { day: 'Thu', high: 20, low: 15, type: 'rainy' },
-      { day: 'Fri', high: 24, low: 17, type: 'sunny' },
-      { day: 'Sat', high: 25, low: 18, type: 'sunny' },
-    ]
+  const fetchWeather = async (lat = -1.2921, lon = 36.8219, cityName = "Nairobi") => {
+    setLoading(true);
+    try {
+      // 1. Fetching from Open-Meteo (Current + 5 Day Forecast)
+      const url = `https://open-meteo.com{lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      setWeatherData({
+        city: cityName,
+        temp: Math.round(data.current_weather.temperature),
+        condition: data.current_weather.weathercode, 
+        wind: data.current_weather.windspeed,
+        forecast: data.daily.time.slice(0, 5).map((date, i) => ({
+          day: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+          high: Math.round(data.daily.temperature_2m_max[i]),
+          low: Math.round(data.daily.temperature_2m_min[i]),
+          code: data.daily.weathercode[i]
+        }))
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchWeather(); 
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-400 to-indigo-600 p-6 font-sans">
